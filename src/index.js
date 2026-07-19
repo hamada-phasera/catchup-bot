@@ -288,42 +288,61 @@ const HELP_TEXT =
   '・上のどれでもない場合は、ボタンか `/todo` から手動で対応済みにできます。\n\n' +
   '※ 発言内容はダイジェスト作成のためにこのサーバー内のみで保存されます。';
 
+// このボットが提供するスラッシュコマンドの定義。
+const COMMAND_DEFINITIONS = [
+  { name: 'help', description: 'CatchUpBot の使い方を表示します' },
+  {
+    name: 'catchup',
+    description: '見ていなかった間のサーバーのまとめを DM で受け取ります',
+    options: [
+      {
+        name: 'hours',
+        description: '何時間前まで遡るか（既定24）',
+        type: ApplicationCommandOptionType.Integer,
+        required: false,
+        minValue: 1,
+        maxValue: 168,
+      },
+    ],
+  },
+  {
+    name: 'subscribe',
+    description: '毎日決まった時刻にまとめを自動配信します',
+    options: [
+      {
+        name: 'time',
+        description: '配信時刻 HH:MM（既定 08:00）',
+        type: ApplicationCommandOptionType.String,
+        required: false,
+      },
+    ],
+  },
+  { name: 'unsubscribe', description: '自動配信を停止します' },
+  { name: 'todo', description: '自分宛の未対応メンションを表示します' },
+];
+
+// 参加しているサーバーへコマンドを登録する。
+// グローバル登録（application.commands.set）は反映に最大1時間かかるうえ、
+// 同じアプリを使う別のボットのコマンドを消してしまうため、サーバー単位で登録する。
+// サーバー単位の登録は即座に反映される。
+async function registerCommands(guild) {
+  try {
+    await guild.commands.set(COMMAND_DEFINITIONS);
+    console.log(`コマンドを登録しました: ${guild.name}`);
+  } catch (error) {
+    console.error(`コマンド登録に失敗 (${guild.name}):`, error.message);
+  }
+}
+
 // ----- 起動時: スラッシュコマンドを登録 -----
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`${readyClient.user.tag} としてログインしました`);
-  await readyClient.application.commands.set([
-    { name: 'help', description: 'CatchUpBot の使い方を表示します' },
-    {
-      name: 'catchup',
-      description: '見ていなかった間のサーバーのまとめを DM で受け取ります',
-      options: [
-        {
-          name: 'hours',
-          description: '何時間前まで遡るか（既定24）',
-          type: ApplicationCommandOptionType.Integer,
-          required: false,
-          minValue: 1,
-          maxValue: 168,
-        },
-      ],
-    },
-    {
-      name: 'subscribe',
-      description: '毎日決まった時刻にまとめを自動配信します',
-      options: [
-        {
-          name: 'time',
-          description: '配信時刻 HH:MM（既定 08:00）',
-          type: ApplicationCommandOptionType.String,
-          required: false,
-        },
-      ],
-    },
-    { name: 'unsubscribe', description: '自動配信を停止します' },
-    { name: 'todo', description: '自分宛の未対応メンションを表示します' },
-  ]);
-  console.log('スラッシュコマンドを登録しました');
+  await Promise.all(readyClient.guilds.cache.map((guild) => registerCommands(guild)));
+  console.log(`スラッシュコマンドを ${readyClient.guilds.cache.size} 個のサーバーに登録しました`);
 });
+
+// ----- 新しいサーバーに招待されたときも登録する -----
+client.on(Events.GuildCreate, (guild) => registerCommands(guild));
 
 // ----- 発言の記録とメンションの検出 -----
 client.on(Events.MessageCreate, async (message) => {

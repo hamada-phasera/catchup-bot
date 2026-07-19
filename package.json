@@ -1,0 +1,23 @@
+{
+  "name": "catchupbot",
+  "version": "1.0.0",
+  "description": "Discord catch-up digest bot (分散情報システム 最終課題)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.10.0",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.2",
+    "pg": "^8.13.3",
+    "sequelize": "^6.37.7"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

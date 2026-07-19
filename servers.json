@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "catchup",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "catchup",
+      "Username": "catchup",
+      "SSLMode": "prefer"
+    }
+  }
+}

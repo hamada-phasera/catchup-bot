@@ -1,0 +1,55 @@
+services:
+  app:
+    build: .
+    container_name: catchupapp
+    working_dir: /usr/src/app
+    environment:
+      TZ: "Asia/Tokyo"
+    env_file:
+      - .env
+    ports:
+      - 3000:3000
+    volumes:
+      - .:/usr/src/app
+      - app:/usr/src/app/node_modules
+    depends_on:
+      - postgres
+    command: npm start
+
+  postgres:
+    image: postgres:15
+    container_name: catchupdb
+    restart: always
+    environment:
+      TZ: "Asia/Tokyo"
+      POSTGRES_USER: catchup
+      POSTGRES_PASSWORD: abc123
+      POSTGRES_DB: catchup
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - 5436:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: catchup_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+    ports:
+      - 8083:80
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+      - ./servers.json:/pgadmin4/servers.json
+    depends_on:
+      - postgres
+
+volumes:
+  app:
+  postgres:
+  pgadmin:

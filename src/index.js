@@ -48,6 +48,10 @@ const AUTO_DONE_MINUTES = 30;
 const MAX_LOG_PER_CHANNEL = 60;
 // ダイジェストに載せる未対応メンションの最大件数。
 const MAX_TODO_IN_DIGEST = 10;
+// 動作確認用のモード。1人だけのサーバーでも試せるように、
+// 通常は無視する「自分宛のメンション」と「自分の発言」も対象に含める。
+// 本来は自分が知っている情報を自分に送っても意味が無いため、既定では除外している。
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
 
 // ============================================================================
 //  データベース
@@ -204,7 +208,8 @@ async function sendDigest(user, guildId, hours) {
   // チャンネルごとにログをまとめる。自分の発言は要約に含めない（自分は知っているため）。
   const logsByChannel = {};
   for (const row of rows) {
-    if (row.author_id === user.id) continue;
+    // 自分の発言は既に知っているので要約には含めない（デモ時を除く）。
+    if (!DEMO_MODE && row.author_id === user.id) continue;
     if (!row.content) continue;
     (logsByChannel[row.channel_name] ||= []).push(row);
   }
@@ -364,7 +369,9 @@ client.on(Events.MessageCreate, async (message) => {
     //     @everyone / @here は全員宛なので個人タスクにはしない。
     if (!message.mentions.everyone) {
       for (const target of message.mentions.users.values()) {
-        if (target.bot || target.id === message.author.id) continue;
+        if (target.bot) continue;
+        // 自分で自分をメンションしても普段は意味が無いので無視する（デモ時を除く）。
+        if (!DEMO_MODE && target.id === message.author.id) continue;
         await Mention.create({
           guild_id: message.guild.id,
           channel_id: message.channel.id,
@@ -390,14 +397,17 @@ client.on(Events.MessageCreate, async (message) => {
 
     // (3) メンションされた本人が同じチャンネルで一定時間内に発言したら対応済みとみなす。
     //     Discord では返信機能を使わずそのまま書くことが多いため、この救済を入れている。
-    await resolveMentions(
-      {
-        channel_id: message.channel.id,
-        target_user_id: message.author.id,
-        posted_at: { [Op.gte]: new Date(Date.now() - AUTO_DONE_MINUTES * 60 * 1000) },
-      },
-      '同じチャンネルで発言した'
-    );
+    //     デモ時は自分の発言で自分宛のメンションが即座に消えてしまうため無効にする。
+    if (!DEMO_MODE) {
+      await resolveMentions(
+        {
+          channel_id: message.channel.id,
+          target_user_id: message.author.id,
+          posted_at: { [Op.gte]: new Date(Date.now() - AUTO_DONE_MINUTES * 60 * 1000) },
+        },
+        '同じチャンネルで発言した'
+      );
+    }
   } catch (error) {
     console.error('メッセージ処理でエラー:', error.message);
   }
